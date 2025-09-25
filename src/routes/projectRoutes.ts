@@ -3,7 +3,8 @@ import { body, param } from "express-validator";
 import { ProjectController } from "../controller/ProjectController";
 import { handleInputErrors } from "../middleware/validation";
 import { TaskController } from "../controller/TaskController";
-import { validateProjectExists } from "../middleware/project";
+import { projectExists } from "../middleware/project";
+import { taskExists, taskBelongToProject } from "../middleware/task";
 
 const router = Router();
 
@@ -51,21 +52,59 @@ router.delete("/:id",
 
 
 /* ROUTES FOR TASKS */
+router.param('projectId', projectExists);
 
 //CREATE /api/:projectId/tasks
 router.post('/:projectId/tasks',
     body ('title').notEmpty().withMessage('El nombre de la tarea es requerido'),
     body ('description').notEmpty().withMessage('La descripción de la tarea es requerida'),
-    validateProjectExists,
+    handleInputErrors,
     TaskController.createTask
-) //api/projects/12345/tasks
+)
 
-//GET /api/tasks
+//GET /api/:projectId/tasks
 router.get('/:projectId/tasks',
-    validateProjectExists,
     TaskController.getProjectTask
 ) 
 
+router.param('taskId', taskExists);
+router.param('taskId', taskBelongToProject);
 
+//GET /api/:projectId/tasks/:taskId
+router.get('/:projectId/tasks/:taskId',
+    param('taskId').isMongoId().withMessage('ID no VALIDO'),
+    handleInputErrors,
+    TaskController.getTaskById
+) 
+
+//UPDATE /api/:projectId/tasks/:taskId
+router.put('/:projectId/tasks/:taskId',
+    param('taskId').isMongoId().withMessage('ID no VALIDO'),
+    body ('title').notEmpty().withMessage('El nombre de la tarea es requerido'),
+    body ('description').notEmpty().withMessage('La descripción de la tarea es requerida'),
+    handleInputErrors,
+    TaskController.updateTask
+) 
+
+//DELETE /api/:projectId/tasks/:taskId
+router.delete("/:projectId/tasks/:taskId", 
+    param('taskId').isMongoId().withMessage('ID no VALIDO'),
+    handleInputErrors,
+    TaskController.deleteTask
+);
+
+router.post('/:projectId/tasks/:taskId/status',
+    param('taskId').isMongoId().withMessage('ID no VALIDO'),
+    body('status').notEmpty().withMessage('El estado es obligatorio'),
+    handleInputErrors,
+    TaskController.updateStatus
+)
+
+router.post('/:projectId/tasks/:taskId/priority',
+    param('taskId').isMongoId().withMessage('ID no VALIDO'),
+    body('priority').notEmpty().withMessage('La prioridad es obligatoria'),
+    handleInputErrors,
+    TaskController.updatePriority
+)
 
 export default router;
