@@ -24,9 +24,9 @@ export interface ITask extends Document {
     project: Types.ObjectId;
     status: TaskStatus;
     priority: TaskPriority;
-    assignedTo: Types.ObjectId;
+/*     assignedTo: Types.ObjectId;
     assignedBy: Types.ObjectId;
-    assignedDate: Date;
+    assignedDate: Date;  */
 }
 
 export const TaskSchema: Schema = new Schema({
@@ -55,8 +55,8 @@ export const TaskSchema: Schema = new Schema({
         type: String,
         enum: Object.values(taskPriority),
         default: taskPriority.LOW
-    },
-    assignedTo: {
+    }
+/*     assignedTo: {
         type: Types.ObjectId,
         ref: "User",
         required: true,
@@ -72,7 +72,7 @@ export const TaskSchema: Schema = new Schema({
         type: Date,
         required: true,
         trim: true
-    }
+    }  */
 }, {
     timestamps: true
 })
