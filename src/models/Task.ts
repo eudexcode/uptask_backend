@@ -8,22 +8,14 @@ const taskStatus = {
     COMPLETED: "COMPLETED"
 } as const;
 
-const taskPriority = {
-    LOW: "LOW",
-    MEDIUM: "MEDIUM",
-    HIGH: "HIGH",
-    CRITICAL: "CRITICAL"
-} as const;
-
 export type TaskStatus = typeof taskStatus[keyof typeof taskStatus];
-export type TaskPriority = typeof taskPriority[keyof typeof taskPriority];
 
 export interface ITask extends Document {
     title: string;
     description: string;
     project: Types.ObjectId;
     status: TaskStatus;
-    priority: TaskPriority;
+    priority: string;
 /*     assignedTo: Types.ObjectId;
     assignedBy: Types.ObjectId;
     assignedDate: Date;  */
@@ -53,8 +45,8 @@ export const TaskSchema: Schema = new Schema({
     },
     priority: {
         type: String,
-        enum: Object.values(taskPriority),
-        default: taskPriority.LOW
+        required: true,
+        trim: true
     }
 /*     assignedTo: {
         type: Types.ObjectId,
