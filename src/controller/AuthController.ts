@@ -3,7 +3,8 @@ import User from "../models/User"
 import Token from "../models/Token";
 import { hashPassword, checkPassword } from "../utils/auth";
 import { generateToken } from "../utils/token";
-import { AuthEmail } from "../emails/Authemail";
+import { AuthEmail } from "../emails/AuthEmail";
+import { generateJWT } from "../utils/jwt";
 
 
 export class AuthController {
@@ -101,9 +102,109 @@ export class AuthController {
         return res.status(401).json({error: error.message})
       }
 
-      res.status(200).json('Autenticando...')
+      const token = generateJWT({id: user.id})
+      
+      res.status(200).json({token})
     }catch(error){
       res.status(500).json('Hubo un error al iniciar sesión');
+    }
+  };
+
+  static requestConfirmationCode = async (req: Request, res: Response) => {
+    try{
+      const { email } = req.body
+      const user = await User.findOne({ email })
+      if(!user){
+        const error = new Error('Usuario no esta registrado')
+        return res.status(404).json({error: error.message})
+      }
+
+      if(user.confirmed){
+        const error = new Error('El Usuario ya esta confirmado')
+        return res.status(403).json({error: error.message})
+      }
+
+      const token = new Token()
+      token.token = generateToken()
+      token.user = user.id
+
+      AuthEmail.sendConfirmationEmail({
+        email: user.email,
+        name: user.name,
+        token: token.token
+      })
+
+      await Promise.allSettled([user.save(), token.save()])
+
+      res.status(200).json('Codigo de confirmación enviado a tu correo correctamente');
+    }catch(error){
+      res.status(500).json('Hubo un error al solicitar el codigo de confirmación');
+    }
+  };
+
+  static forgotPassword = async (req: Request, res: Response) => {
+    try{
+      const { email } = req.body
+      const user = await User.findOne({ email })
+      if(!user){
+        const error = new Error('Usuario no esta registrado')
+        return res.status(404).json({error: error.message})
+      }
+
+      const token = new Token()
+      token.token = generateToken()
+      token.user = user.id
+      await token.save()
+
+      AuthEmail.sendPasswordResetToken({
+        email: user.email,
+        name: user.name,
+        token: token.token
+      })
+
+      res.status(200).json('Revisa tu email para reestablecer tu contraseña');
+    }catch(error){
+      res.status(500).json('Hubo un error al solicitar el reestablecimiento de contraseña');
+    }
+  };
+
+  static validateToken = async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body
+
+      const tokenExits = await Token.findOne({token})
+      if(!tokenExits){
+        const error = new Error('Token no válido')
+        return res.status(404).json({ error: error.message })
+      }
+
+      res.status(200).json('Token válido. Define tu nueva contraseña' );
+
+    }catch(error){
+      res.status(500).json('Error al validar el token');
+    }
+  };
+
+  static updatePasswordWithToken = async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params
+      const { password } = req.body
+
+      const tokenExits = await Token.findOne({token})
+      if(!tokenExits){
+        const error = new Error('Token no válido')
+        return res.status(404).json({ error: error.message })
+      }
+
+      const user = await User.findById(tokenExits.user)
+      user.password = await hashPassword(password)
+
+      await Promise.allSettled([user.save(), tokenExits.deleteOne()])
+
+      res.status(200).json('El password se actualizo correctamente');
+
+    }catch(error){
+      res.status(500).json('Error al actualizar el password');
     }
   };
 }
